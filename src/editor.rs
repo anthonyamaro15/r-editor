@@ -42,6 +42,55 @@ impl Editor {
         }
     }
 
+    fn handle_event(&mut self, event: Event) -> anyhow::Result<Option<Action>> {
+        match self.mode {
+            Mode::Normal => self.handle_normal_mode(event),
+            Mode::Insert => self.handle_insert_mode(event),
+        }
+    }
+    fn handle_normal_mode(&mut self, event: Event) -> anyhow::Result<Option<Action>> {
+        match event {
+            Event::Key(key) => match key.code {
+                KeyCode::Char('j') | KeyCode::Down => Ok(Some(Action::MoveDown)),
+                KeyCode::Char('k') | KeyCode::Up => Ok(Some(Action::MoveUp)),
+                KeyCode::Char('h') | KeyCode::Left => Ok(Some(Action::MoveLeft)),
+                KeyCode::Char('l') | KeyCode::Right => Ok(Some(Action::MoveRight)),
+                KeyCode::Char('q') => Ok(Some(Action::Quit)),
+                KeyCode::Char('i') => Ok(Some(Action::ModeType(Mode::Insert))),
+                _ => Ok(None),
+            },
+            _ => Ok(None),
+        }
+    }
+    fn handle_insert_mode(&mut self, event: Event) -> anyhow::Result<Option<Action>> {
+        match event {
+            Event::Key(key) => match key.code {
+                KeyCode::Esc => Ok(Some(Action::ModeType(Mode::Normal))),
+                KeyCode::Backspace => {
+                    if self.column > 0 {
+                        self.column -= 1;
+                        self.stdout
+                            .queue(cursor::MoveLeft(1))?
+                            .queue(style::Print(" "))?;
+                        self.stdout.flush()?;
+                    }
+                    Ok(None)
+                }
+                KeyCode::Delete => {
+                    println!("delete");
+                    Ok(None)
+                }
+                KeyCode::Char(ch) => {
+                    self.stdout.queue(style::Print(ch))?;
+                    let next = self.column + 1;
+                    self.column = next;
+                    Ok(None)
+                }
+                _ => Ok(None),
+            },
+            _ => Ok(None),
+        }
+    }
     pub fn init(&mut self) -> anyhow::Result<()> {
         terminal::enable_raw_mode()?;
         self.stdout
@@ -78,39 +127,5 @@ impl Editor {
         terminal::disable_raw_mode()?;
         self.stdout.flush()?;
         Ok(())
-    }
-
-    fn handle_event(&mut self, event: Event) -> anyhow::Result<Option<Action>> {
-        match self.mode {
-            Mode::Normal => self.handle_normal_mode(event),
-            Mode::Insert => self.handle_insert_mode(event),
-        }
-    }
-    fn handle_normal_mode(&mut self, event: Event) -> anyhow::Result<Option<Action>> {
-        match event {
-            Event::Key(key) => match key.code {
-                KeyCode::Char('j') | KeyCode::Down => Ok(Some(Action::MoveDown)),
-                KeyCode::Char('k') | KeyCode::Up => Ok(Some(Action::MoveUp)),
-                KeyCode::Char('h') | KeyCode::Left => Ok(Some(Action::MoveLeft)),
-                KeyCode::Char('l') | KeyCode::Right => Ok(Some(Action::MoveRight)),
-                KeyCode::Char('q') => Ok(Some(Action::Quit)),
-                KeyCode::Char('i') => Ok(Some(Action::ModeType(Mode::Insert))),
-                _ => Ok(None),
-            },
-            _ => Ok(None),
-        }
-    }
-    fn handle_insert_mode(&mut self, event: Event) -> anyhow::Result<Option<Action>> {
-        match event {
-            Event::Key(key) => match key.code {
-                KeyCode::Esc => Ok(Some(Action::ModeType(Mode::Normal))),
-                KeyCode::Char(ch) => {
-                    self.stdout.queue(style::Print(ch))?;
-                    Ok(None)
-                }
-                _ => Ok(None),
-            },
-            _ => Ok(None),
-        }
     }
 }
