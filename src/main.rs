@@ -20,14 +20,15 @@ enum Action {
     MoveDown,
     MoveLeft,
     MoveRight,
+    ModeType(Mode),
 }
 
 impl Mode {}
 
-fn handle_event(mode: &Mode, event: Event) -> anyhow::Result<Option<Action>> {
+fn handle_event(stdout: &io::Stdout, mode: &Mode, event: Event) -> anyhow::Result<Option<Action>> {
     match mode {
         Mode::Normal => handle_normal_mode(event),
-        Mode::Insert => handle_insert_mode(event),
+        Mode::Insert => handle_insert_mode(event, stdout),
     }
 }
 
@@ -39,6 +40,7 @@ fn handle_normal_mode(event: Event) -> anyhow::Result<Option<Action>> {
             KeyCode::Char('h') | KeyCode::Left => Ok(Some(Action::MoveLeft)),
             KeyCode::Char('l') | KeyCode::Right => Ok(Some(Action::MoveRight)),
             KeyCode::Char('q') => Ok(Some(Action::Quit)),
+            KeyCode::Char('i') => Ok(Some(Action::ModeType(Mode::Insert))),
             _ => Ok(None),
         },
         _ => Ok(None),
@@ -51,13 +53,23 @@ fn handle_normal_mode(event: Event) -> anyhow::Result<Option<Action>> {
 // y => top to bottom
 // x => left to right
 
-fn handle_insert_mode(_event: Event) -> anyhow::Result<Option<Action>> {
-    todo!()
+fn handle_insert_mode(event: Event, mut stdout: &io::Stdout) -> anyhow::Result<Option<Action>> {
+    match event {
+        Event::Key(key) => match key.code {
+            KeyCode::Esc => Ok(Some(Action::ModeType(Mode::Normal))),
+            KeyCode::Char(ch) => {
+                stdout.queue(style::Print(ch))?;
+                Ok(None)
+            }
+            _ => Ok(None),
+        },
+        _ => Ok(None),
+    }
 }
 
 fn main() -> anyhow::Result<()> {
     let mut stdout = io::stdout();
-    let mode = Mode::Normal;
+    let mut mode = Mode::Normal;
     let mut column = 0;
     let mut row = 0;
 
@@ -69,7 +81,7 @@ fn main() -> anyhow::Result<()> {
 
         stdout.flush()?;
 
-        if let Some(action) = handle_event(&mode, read()?)? {
+        if let Some(action) = handle_event(&stdout, &mode, read()?)? {
             match action {
                 Action::MoveUp => {
                     if row > 0 {
@@ -87,6 +99,7 @@ fn main() -> anyhow::Result<()> {
                 Action::MoveRight => {
                     column += 1;
                 }
+                Action::ModeType(mode_type) => mode = mode_type,
                 Action::Quit => break,
             }
         }
