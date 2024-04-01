@@ -56,7 +56,10 @@ impl Editor {
                 KeyCode::Char('h') | KeyCode::Left => Ok(Some(Action::MoveLeft)),
                 KeyCode::Char('l') | KeyCode::Right => Ok(Some(Action::MoveRight)),
                 KeyCode::Char('q') => Ok(Some(Action::Quit)),
-                KeyCode::Char('i') => Ok(Some(Action::ModeType(Mode::Insert))),
+                KeyCode::Char('i') => {
+                    self.stdout.queue(cursor::SetCursorStyle::BlinkingBar)?;
+                    Ok(Some(Action::ModeType(Mode::Insert)))
+                }
                 _ => Ok(None),
             },
             _ => Ok(None),
@@ -65,7 +68,10 @@ impl Editor {
     fn handle_insert_mode(&mut self, event: Event) -> anyhow::Result<Option<Action>> {
         match event {
             Event::Key(key) => match key.code {
-                KeyCode::Esc => Ok(Some(Action::ModeType(Mode::Normal))),
+                KeyCode::Esc => {
+                    self.stdout.queue(cursor::SetCursorStyle::SteadyBlock)?;
+                    Ok(Some(Action::ModeType(Mode::Normal)))
+                }
                 KeyCode::Backspace => {
                     if self.column > 0 {
                         self.column -= 1;
