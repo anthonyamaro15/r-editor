@@ -25,14 +25,104 @@ enum Action {
 
 impl Mode {}
 
-fn handle_event(stdout: &io::Stdout, mode: &Mode, event: Event) -> anyhow::Result<Option<Action>> {
+struct Editor {
+    column: u16,
+    row: u16,
+    mode: Mode,
+    stdout: io::Stdout,
+}
+
+impl Editor {
+    fn new() -> Editor {
+        Editor {
+            column: 0,
+            row: 0,
+            mode: Mode::Normal,
+            stdout: io::stdout(),
+        }
+    }
+
+    fn init(&mut self) -> anyhow::Result<()> {
+        terminal::enable_raw_mode()?;
+        self.stdout
+            .execute(terminal::Clear(terminal::ClearType::All))?;
+
+        loop {
+            self.stdout.queue(cursor::MoveTo(self.column, self.row))?;
+
+            self.stdout.flush()?;
+
+            if let Some(action) = self.handle_event(read()?)? {
+                match action {
+                    Action::MoveUp => {
+                        if self.row > 0 {
+                            self.row -= 1;
+                        }
+                    }
+                    Action::MoveDown => {
+                        self.row += 1;
+                    }
+                    Action::MoveLeft => {
+                        if self.column > 0 {
+                            self.column -= 1;
+                        }
+                    }
+                    Action::MoveRight => {
+                        self.column += 1;
+                    }
+                    Action::ModeType(mode_type) => self.mode = mode_type,
+                    Action::Quit => break,
+                }
+            }
+        }
+        terminal::disable_raw_mode()?;
+        self.stdout.flush()?;
+        Ok(())
+    }
+
+    fn handle_event(&mut self, event: Event) -> anyhow::Result<Option<Action>> {
+        match self.mode {
+            Mode::Normal => self.handle_normal_mode(event),
+            Mode::Insert => self.handle_insert_mode(event),
+        }
+    }
+    fn handle_normal_mode(&mut self, event: Event) -> anyhow::Result<Option<Action>> {
+        match event {
+            Event::Key(key) => match key.code {
+                KeyCode::Char('j') | KeyCode::Down => Ok(Some(Action::MoveDown)),
+                KeyCode::Char('k') | KeyCode::Up => Ok(Some(Action::MoveUp)),
+                KeyCode::Char('h') | KeyCode::Left => Ok(Some(Action::MoveLeft)),
+                KeyCode::Char('l') | KeyCode::Right => Ok(Some(Action::MoveRight)),
+                KeyCode::Char('q') => Ok(Some(Action::Quit)),
+                KeyCode::Char('i') => Ok(Some(Action::ModeType(Mode::Insert))),
+                _ => Ok(None),
+            },
+            _ => Ok(None),
+        }
+    }
+    fn handle_insert_mode(&mut self, event: Event) -> anyhow::Result<Option<Action>> {
+        match event {
+            Event::Key(key) => match key.code {
+                KeyCode::Esc => Ok(Some(Action::ModeType(Mode::Normal))),
+                KeyCode::Char(ch) => {
+                    self.stdout.queue(style::Print(ch))?;
+                    Ok(None)
+                }
+                _ => Ok(None),
+            },
+            _ => Ok(None),
+        }
+    }
+}
+
+/* fn handle_event(stdout: &io::Stdout, mode: &Mode, event: Event) -> anyhow::Result<Option<Action>> {
     match mode {
         Mode::Normal => handle_normal_mode(event),
         Mode::Insert => handle_insert_mode(event, stdout),
     }
-}
+} */
 
-fn handle_normal_mode(event: Event) -> anyhow::Result<Option<Action>> {
+/* fn handle_normal_mode(event: Event) -> anyhow::Result<Option<Action>> {
     match event {
         Event::Key(key) => match key.code {
             KeyCode::Char('j') | KeyCode::Down => Ok(Some(Action::MoveDown)),
@@ -45,7 +135,7 @@ fn handle_normal_mode(event: Event) -> anyhow::Result<Option<Action>> {
         },
         _ => Ok(None),
     }
-}
+} */
 
 // rows => top to bottom
 // columns => left to right
@@ -53,7 +143,7 @@ fn handle_normal_mode(event: Event) -> anyhow::Result<Option<Action>> {
 // y => top to bottom
 // x => left to right
 
-fn handle_insert_mode(event: Event, mut stdout: &io::Stdout) -> anyhow::Result<Option<Action>> {
+/* fn handle_insert_mode(event: Event, mut stdout: &io::Stdout) -> anyhow::Result<Option<Action>> {
     match event {
         Event::Key(key) => match key.code {
             KeyCode::Esc => Ok(Some(Action::ModeType(Mode::Normal))),
@@ -65,18 +155,21 @@ fn handle_insert_mode(event: Event, mut stdout: &io::Stdout) -> anyhow::Result<O
         },
         _ => Ok(None),
     }
-}
+} */
 
 fn main() -> anyhow::Result<()> {
-    let mut stdout = io::stdout();
-    let mut mode = Mode::Normal;
-    let mut column = 0;
-    let mut row = 0;
-
-    terminal::enable_raw_mode()?;
-    stdout.execute(terminal::Clear(terminal::ClearType::All))?;
-
-    loop {
+    /* let mut stdout = io::stdout();
+       let mut editor = Editor::new();
+       let mut mode = Mode::Normal;
+       let mut column = 0;
+       let mut row = 0;
+    */
+    let mut editor = Editor::new();
+    let _ = editor.init();
+    /* terminal::enable_raw_mode()?;
+       stdout.execute(terminal::Clear(terminal::ClearType::All))?;
+    */
+    /* loop {
         stdout.queue(cursor::MoveTo(column, row))?;
 
         stdout.flush()?;
@@ -105,6 +198,6 @@ fn main() -> anyhow::Result<()> {
         }
     }
     terminal::disable_raw_mode()?;
-    stdout.flush()?;
+    stdout.flush()?; */
     Ok(())
 }
