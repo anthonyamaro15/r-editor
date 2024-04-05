@@ -32,6 +32,7 @@ pub struct Editor {
     row: u16,
     mode: Mode,
     stdout: io::Stdout,
+    window_size: (u16, u16),
 }
 
 impl Editor {
@@ -41,6 +42,7 @@ impl Editor {
             row: 0,
             mode: Mode::Normal,
             stdout: io::stdout(),
+            window_size: terminal::size().unwrap(),
         }
     }
 
@@ -77,6 +79,9 @@ impl Editor {
     }
 
     fn handle_event(&mut self, event: Event) -> anyhow::Result<Option<Action>> {
+        if matches!(event, Event::Resize(_, _)) {
+            self.window_size = terminal::size()?;
+        }
         match self.mode {
             Mode::Normal => self.handle_normal_mode(event),
             Mode::Insert => self.handle_insert_mode(event),
