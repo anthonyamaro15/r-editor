@@ -1,4 +1,5 @@
 use crossterm::event::{read, Event, KeyCode, KeyEvent};
+use crossterm::style::Print;
 use crossterm::{
     cursor,
     style::{self, Stylize},
@@ -9,6 +10,7 @@ use std::{
     io::{self, Write},
 };
 
+#[derive(Debug)]
 enum Mode {
     Normal,
     Insert,
@@ -40,6 +42,25 @@ impl Editor {
             mode: Mode::Normal,
             stdout: io::stdout(),
         }
+    }
+
+    fn generate_line(&mut self) -> anyhow::Result<()> {
+        let str_mode = format!("{:?}", self.mode);
+        let positions = format!("{:?}:{:?} ", self.row, self.column);
+
+        let size = terminal::size().unwrap();
+        let _ = self.stdout.queue(cursor::MoveTo(0, size.1 - 5));
+
+        let style_mode = str_mode
+            .with(style::Color::Red)
+            .attribute(style::Attribute::Bold);
+
+        self.stdout.queue(style::Print(style_mode))?;
+        self.stdout.queue(style::Print(positions))?;
+
+        self.stdout.queue(cursor::MoveTo(self.column, self.row))?;
+        let _ = self.stdout.flush();
+        Ok(())
     }
 
     fn handle_event(&mut self, event: Event) -> anyhow::Result<Option<Action>> {
@@ -103,10 +124,7 @@ impl Editor {
             .execute(terminal::Clear(terminal::ClearType::All))?;
 
         loop {
-            self.stdout.queue(cursor::MoveTo(self.column, self.row))?;
-
-            self.stdout.flush()?;
-
+            self.generate_line()?;
             if let Some(action) = self.handle_event(read()?)? {
                 match action {
                     Action::MoveUp => {
