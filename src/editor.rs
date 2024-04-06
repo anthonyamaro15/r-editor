@@ -5,6 +5,8 @@ use crossterm::{
     style::{self, Stylize},
     terminal, ExecutableCommand, QueueableCommand,
 };
+use std::fs::File;
+use std::io::BufReader;
 use std::{
     fs,
     io::{self, Write},
@@ -78,6 +80,21 @@ impl Editor {
         Ok(())
     }
 
+    fn display_file(&mut self, file: &str) -> anyhow::Result<()> {
+        let content: Vec<_> = fs::read_to_string(file)
+            .unwrap()
+            .lines()
+            .map(|s| s.to_string())
+            .collect();
+
+        for (i, line) in content.iter().enumerate() {
+            self.stdout.queue(cursor::MoveTo(0, i as u16))?;
+            self.stdout.queue(Print(line))?;
+        }
+
+        Ok(())
+    }
+
     fn handle_event(&mut self, event: Event) -> anyhow::Result<Option<Action>> {
         if matches!(event, Event::Resize(_, _)) {
             self.window_size = terminal::size()?;
@@ -141,6 +158,7 @@ impl Editor {
         self.stdout
             .execute(terminal::Clear(terminal::ClearType::All))?;
 
+        self.display_file("src/main.rs")?;
         loop {
             self.generate_line()?;
             if let Some(action) = self.handle_event(read()?)? {
