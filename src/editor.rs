@@ -148,6 +148,10 @@ impl Editor {
                     self.column = next;
                     Ok(None)
                 }
+                KeyCode::Up => Ok(Some(Action::MoveUp)),
+                KeyCode::Right => Ok(Some(Action::MoveRight)),
+                KeyCode::Down => Ok(Some(Action::MoveDown)),
+                KeyCode::Left => Ok(Some(Action::MoveLeft)),
                 _ => Ok(None),
             },
             _ => Ok(None),
