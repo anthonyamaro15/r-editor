@@ -12,6 +12,8 @@ use std::{
     io::{self, Write},
 };
 
+use crate::buffer::Buffer;
+
 #[derive(Debug)]
 enum Mode {
     Normal,
@@ -30,22 +32,35 @@ enum Action {
 impl Mode {}
 
 pub struct Editor {
+    buffer: Buffer,
     column: u16,
     row: u16,
+    terminal_top: u16,
+    terminal_left: u16,
     mode: Mode,
     stdout: io::Stdout,
     window_size: (u16, u16),
 }
 
 impl Editor {
-    pub fn new() -> Editor {
+    pub fn new(buffer: Buffer) -> Editor {
         Editor {
+            buffer,
             column: 0,
             row: 0,
+            terminal_top: 0,
+            terminal_left: 0,
             mode: Mode::Normal,
             stdout: io::stdout(),
             window_size: terminal::size().unwrap(),
         }
+    }
+
+    fn terminal_height(&mut self) -> u16 {
+        self.window_size.1 - 2
+    }
+    fn terminal_width(&mut self) -> u16 {
+        self.window_size.0
     }
 
     fn generate_line(&mut self) -> anyhow::Result<()> {
@@ -53,7 +68,7 @@ impl Editor {
         let positions = format!(" {:?}:{:?} ", self.row, self.column);
 
         let size = terminal::size().unwrap();
-        let _ = self.stdout.queue(cursor::MoveTo(0, size.1 - 5));
+        let _ = self.stdout.queue(cursor::MoveTo(0, size.1 - 2));
 
         self.stdout.queue(style::PrintStyledContent(
             str_mode
@@ -80,19 +95,27 @@ impl Editor {
         Ok(())
     }
 
-    fn display_file(&mut self, file: &str) -> anyhow::Result<()> {
-        let content: Vec<_> = fs::read_to_string(file)
-            .unwrap()
-            .lines()
-            .map(|s| s.to_string())
-            .collect();
-
-        for (i, line) in content.iter().enumerate() {
+    fn display_file(&mut self) -> anyhow::Result<()> {
+        let buffer_lines = self.buffer.lines.clone();
+        println!("terminal height: {}", self.terminal_height());
+        for (i, line) in buffer_lines.iter().enumerate() {
+            if i >= self.terminal_height() as usize {
+                break;
+            }
             self.stdout.queue(cursor::MoveTo(0, i as u16))?;
             self.stdout.queue(Print(line))?;
         }
 
         Ok(())
+    }
+
+    fn get_line_length(&mut self) -> u16 {
+        let line = self.buffer.get_line(self.row as usize);
+
+        if line.is_empty() {
+            0;
+        }
+        line.len() as u16
     }
 
     fn handle_event(&mut self, event: Event) -> anyhow::Result<Option<Action>> {
@@ -162,7 +185,9 @@ impl Editor {
         self.stdout
             .execute(terminal::Clear(terminal::ClearType::All))?;
 
-        self.display_file("src/main.rs")?;
+        println!("{}, : {}", self.terminal_width(), self.terminal_height());
+
+        self.display_file()?;
         loop {
             self.generate_line()?;
             if let Some(action) = self.handle_event(read()?)? {
@@ -174,6 +199,10 @@ impl Editor {
                     }
                     Action::MoveDown => {
                         self.row += 1;
+
+                        if self.row >= self.terminal_height() {
+                            self.row = self.terminal_height() - 1;
+                        }
                     }
                     Action::MoveLeft => {
                         if self.column > 0 {
