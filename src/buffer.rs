@@ -15,8 +15,11 @@ impl Buffer {
         Buffer { lines: content }
     }
 
-    pub fn get_line(&mut self, index: usize) -> String {
-        let line = self.lines[index].clone();
-        line
+    pub fn get_line(&mut self, index: usize) -> Option<String> {
+        if self.lines.len() > index {
+            let line = self.lines[index].clone();
+            Some(line);
+        }
+        None
     }
 }

@@ -55,7 +55,6 @@ impl Editor {
             window_size: terminal::size().unwrap(),
         }
     }
-
     fn terminal_height(&mut self) -> u16 {
         self.window_size.1 - 2
     }
@@ -95,27 +94,30 @@ impl Editor {
         Ok(())
     }
 
+    fn v_line(&mut self, index: u16) -> Option<String> {
+        let line = self.terminal_top + index;
+
+        self.buffer.get_line(line.into())
+    }
     fn display_file(&mut self) -> anyhow::Result<()> {
+        //let width = self.terminal_width() as usize;
         let buffer_lines = self.buffer.lines.clone();
-        println!("terminal height: {}", self.terminal_height());
         for (i, line) in buffer_lines.iter().enumerate() {
-            if i >= self.terminal_height() as usize {
-                break;
-            }
             self.stdout.queue(cursor::MoveTo(0, i as u16))?;
-            self.stdout.queue(Print(line))?;
+            self.stdout.queue(style::Print(line))?;
         }
 
         Ok(())
     }
 
     fn get_line_length(&mut self) -> u16 {
-        let line = self.buffer.get_line(self.row as usize);
+        let line = self.terminal_top + self.row;
+        let line = self.buffer.get_line(line as usize);
 
-        if line.is_empty() {
-            0;
+        match line {
+            Some(line) => line.len() as u16,
+            None => 0,
         }
-        line.len() as u16
     }
 
     fn handle_event(&mut self, event: Event) -> anyhow::Result<Option<Action>> {
@@ -151,6 +153,7 @@ impl Editor {
                     self.stdout.queue(cursor::SetCursorStyle::SteadyBlock)?;
                     Ok(Some(Action::ModeType(Mode::Normal)))
                 }
+
                 KeyCode::Backspace => {
                     if self.column > 0 {
                         self.column -= 1;
@@ -163,6 +166,11 @@ impl Editor {
                 }
                 KeyCode::Delete => {
                     println!("delete");
+                    Ok(None)
+                }
+                KeyCode::Enter => {
+                    self.row += 1;
+                    self.column = 0;
                     Ok(None)
                 }
                 KeyCode::Char(ch) => {
@@ -180,16 +188,30 @@ impl Editor {
             _ => Ok(None),
         }
     }
+
+    fn handle_broundries(&mut self) {
+        if self.column >= self.get_line_length() {
+            if self.get_line_length() > 0 {
+                self.column = self.get_line_length() - 1;
+            } else {
+                self.column = 0;
+            }
+        }
+        if self.column >= self.terminal_width() {
+            self.column = self.terminal_width() - 1;
+        }
+    }
+
     pub fn init(&mut self) -> anyhow::Result<()> {
         terminal::enable_raw_mode()?;
         self.stdout
             .execute(terminal::Clear(terminal::ClearType::All))?;
 
-        println!("{}, : {}", self.terminal_width(), self.terminal_height());
-
-        self.display_file()?;
         loop {
+            //self.handle_broundries();
+            self.display_file()?;
             self.generate_line()?;
+            // println!("what is row {} ", self.row);
             if let Some(action) = self.handle_event(read()?)? {
                 match action {
                     Action::MoveUp => {
@@ -199,10 +221,11 @@ impl Editor {
                     }
                     Action::MoveDown => {
                         self.row += 1;
-
-                        if self.row >= self.terminal_height() {
-                            self.row = self.terminal_height() - 1;
-                        }
+                        /* if self.row >= self.terminal_height() {
+                            println!("is this even runnninggg");
+                            self.terminal_top += 1;
+                            self.row -= 1;
+                        } */
                     }
                     Action::MoveLeft => {
                         if self.column > 0 {
