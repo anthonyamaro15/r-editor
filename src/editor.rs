@@ -216,14 +216,19 @@ impl Editor {
             self.display_file()?;
             self.generate_line()?;
 
-            //println!("row {}, terminal top: {} ", self.row, self.terminal_top);
-
             // println!("what is row {} ", self.row);
             if let Some(action) = self.handle_event(read()?)? {
                 match action {
                     Action::MoveUp => {
                         if self.row > 0 {
                             self.row -= 1;
+                        }
+
+                        if self.row == 0 {
+                            if self.terminal_top > 0 {
+                                self.terminal_top -= 1;
+                                self.row += 1;
+                            }
                         }
                     }
                     Action::MoveDown => {
