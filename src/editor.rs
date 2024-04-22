@@ -212,7 +212,7 @@ impl Editor {
             .execute(terminal::Clear(terminal::ClearType::All))?;
 
         loop {
-            //self.handle_broundries();
+            self.handle_broundries();
             self.display_file()?;
             self.generate_line()?;
 
@@ -235,7 +235,7 @@ impl Editor {
                         self.row += 1;
                         if self.row >= self.terminal_height() {
                             self.terminal_top += 1;
-                            self.row -= 1;
+                            //self.row -= 1;
                         }
                     }
                     Action::MoveLeft => {

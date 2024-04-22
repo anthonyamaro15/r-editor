@@ -9,7 +9,7 @@ use crate::editor::Editor;
 // x => left to right
 
 fn main() -> anyhow::Result<()> {
-    let buffer = Buffer::new("src/editor.rs");
+    let buffer = Buffer::new("src/buffer.rs");
     let mut editor = Editor::new(buffer);
     let _ = editor.init();
     Ok(())
