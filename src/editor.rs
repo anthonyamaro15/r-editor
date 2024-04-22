@@ -1,4 +1,4 @@
-use crossterm::event::{read, Event, KeyCode, KeyEvent};
+use crossterm::event::{read, Event, KeyCode};
 use crossterm::style::{Color, Print};
 use crossterm::{
     cursor,
@@ -94,30 +94,34 @@ impl Editor {
         Ok(())
     }
 
-    fn v_line(&mut self, index: u16) -> Option<String> {
+    fn v_line(&mut self, index: u16) -> String {
         let line = self.terminal_top + index;
 
-        self.buffer.get_line(line.into())
+        let st = self.buffer.get_line(line as usize);
+        st
     }
     fn display_file(&mut self) -> anyhow::Result<()> {
-        //let width = self.terminal_width() as usize;
-        let buffer_lines = self.buffer.lines.clone();
-        for (i, line) in buffer_lines.iter().enumerate() {
-            self.stdout.queue(cursor::MoveTo(0, i as u16))?;
-            self.stdout.queue(style::Print(line))?;
-        }
+        let vwidth = self.terminal_width() as usize;
+        for i in 0..self.terminal_height() {
+            let g_line = self.v_line(i);
 
+            self.stdout
+                .queue(cursor::MoveTo(0, i))?
+                .queue(style::Print(format!("{g_line:<width$}", width = vwidth)))?;
+        }
+        let _ = self.stdout.flush();
         Ok(())
     }
 
     fn get_line_length(&mut self) -> u16 {
         let line = self.terminal_top + self.row;
-        let line = self.buffer.get_line(line as usize);
+        let new_line = self.buffer.get_line(line as usize);
 
-        match line {
-            Some(line) => line.len() as u16,
+        new_line.len() as u16
+        /* match new_line {
+            Some(l) => l.len() as u16,
             None => 0,
-        }
+        } */
     }
 
     fn handle_event(&mut self, event: Event) -> anyhow::Result<Option<Action>> {
@@ -211,6 +215,9 @@ impl Editor {
             //self.handle_broundries();
             self.display_file()?;
             self.generate_line()?;
+
+            //println!("row {}, terminal top: {} ", self.row, self.terminal_top);
+
             // println!("what is row {} ", self.row);
             if let Some(action) = self.handle_event(read()?)? {
                 match action {
@@ -221,11 +228,10 @@ impl Editor {
                     }
                     Action::MoveDown => {
                         self.row += 1;
-                        /* if self.row >= self.terminal_height() {
-                            println!("is this even runnninggg");
+                        if self.row >= self.terminal_height() {
                             self.terminal_top += 1;
                             self.row -= 1;
-                        } */
+                        }
                     }
                     Action::MoveLeft => {
                         if self.column > 0 {
