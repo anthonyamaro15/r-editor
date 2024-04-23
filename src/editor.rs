@@ -204,6 +204,12 @@ impl Editor {
         if self.column >= self.terminal_width() {
             self.column = self.terminal_width() - 1;
         }
+
+        let total_height = self.row + self.terminal_top;
+
+        if total_height >= self.buffer.len() as u16 {
+            self.row = self.buffer.len() as u16 - self.terminal_top - 1;
+        }
     }
 
     pub fn init(&mut self) -> anyhow::Result<()> {
@@ -216,7 +222,6 @@ impl Editor {
             self.display_file()?;
             self.generate_line()?;
 
-            // println!("what is row {} ", self.row);
             if let Some(action) = self.handle_event(read()?)? {
                 match action {
                     Action::MoveUp => {

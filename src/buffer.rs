@@ -23,4 +23,8 @@ impl Buffer {
         }
         String::from("")
     }
+
+    pub fn len(&mut self) -> usize {
+        self.lines.len()
+    }
 }
