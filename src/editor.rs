@@ -27,6 +27,7 @@ enum Action {
     MoveLeft,
     MoveRight,
     AddChar(char),
+    RemoveChar,
     ModeType(Mode),
     MoveToEndOfLine,
     MoveToStartOfLine,
@@ -166,6 +167,7 @@ impl Editor {
                     }
                     event::KeyCode::Char('$') => Some(Action::MoveToEndOfLine),
                     event::KeyCode::Char('0') => Some(Action::MoveToStartOfLine),
+                    event::KeyCode::Char('x') => Some(Action::RemoveChar),
 
                     _ => None,
                 }
@@ -185,14 +187,14 @@ impl Editor {
                 }
 
                 KeyCode::Backspace => {
-                    if self.column > 0 {
+                    return Ok(Some(Action::RemoveChar));
+                    /* if self.column > 0 {
                         self.column -= 1;
                         self.stdout
                             .queue(cursor::MoveLeft(1))?
                             .queue(style::Print(" "))?;
                         self.stdout.flush()?;
-                    }
-                    Ok(None)
+                    } */
                 }
                 KeyCode::Delete => {
                     println!("delete");
@@ -289,6 +291,14 @@ impl Editor {
                         let buffer_line = self.buffer_line();
                         self.buffer.insert_char(column, buffer_line, ch);
                         self.column += 1;
+                    }
+                    Action::RemoveChar => {
+                        let buffer_line = self.buffer_line();
+                        let column = self.column as usize;
+
+                        if self.column > 0 {
+                            self.buffer.remove_char(column, buffer_line);
+                        }
                     }
 
                     Action::MoveToEndOfLine => {

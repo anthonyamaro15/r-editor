@@ -34,4 +34,10 @@ impl Buffer {
             (*lines).insert(index, value)
         }
     }
+
+    pub fn remove_char(&mut self, index: usize, buffer_line: u16) {
+        if let Some(lines) = self.lines.get_mut(buffer_line as usize) {
+            (*lines).remove(index);
+        }
+    }
 }
