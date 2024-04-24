@@ -1,4 +1,4 @@
-use crossterm::event::{read, Event, KeyCode};
+use crossterm::event::{self, read, Event, KeyCode, KeyModifiers, ModifierKeyCode};
 use crossterm::style::{Color, Print};
 use crossterm::{
     cursor,
@@ -27,6 +27,8 @@ enum Action {
     MoveLeft,
     MoveRight,
     ModeType(Mode),
+    MoveToEndOfLine,
+    MoveToStartOfLine,
 }
 
 impl Mode {}
@@ -134,7 +136,39 @@ impl Editor {
         }
     }
     fn handle_normal_mode(&mut self, event: Event) -> anyhow::Result<Option<Action>> {
-        match event {
+        let action = match event {
+            event::Event::Key(event) => {
+                let code = event.code;
+                let modifier = event.modifiers;
+
+                match code {
+                    event::KeyCode::Char('j') | event::KeyCode::Down => Some(Action::MoveDown),
+                    event::KeyCode::Char('k') | event::KeyCode::Up => Some(Action::MoveUp),
+                    event::KeyCode::Char('h') | event::KeyCode::Left => Some(Action::MoveLeft),
+                    event::KeyCode::Char('l') | event::KeyCode::Right => {
+                        if matches!(modifier, KeyModifiers::CONTROL) {
+                            Some(Action::MoveToEndOfLine)
+                        } else {
+                            Some(Action::MoveRight)
+                        }
+                    }
+                    event::KeyCode::Char('q') => Some(Action::Quit),
+                    event::KeyCode::Char('i') => {
+                        self.stdout.queue(cursor::SetCursorStyle::BlinkingBar)?;
+                        Some(Action::ModeType(Mode::Insert))
+                    }
+                    event::KeyCode::Char('$') => Some(Action::MoveToEndOfLine),
+                    event::KeyCode::Char('0') => Some(Action::MoveToStartOfLine),
+
+                    _ => None,
+                }
+            }
+
+            _ => None,
+        };
+
+        Ok(action)
+        /* match event {
             Event::Key(key) => match key.code {
                 KeyCode::Char('j') | KeyCode::Down => Ok(Some(Action::MoveDown)),
                 KeyCode::Char('k') | KeyCode::Up => Ok(Some(Action::MoveUp)),
@@ -145,10 +179,12 @@ impl Editor {
                     self.stdout.queue(cursor::SetCursorStyle::BlinkingBar)?;
                     Ok(Some(Action::ModeType(Mode::Insert)))
                 }
+                KeyCode::Char('$') => Ok(Some(Action::MoveToEndOfLine)),
+                KeyCode::Char('0') => Ok(Some(Action::MoveToStartOfLine)),
                 _ => Ok(None),
             },
             _ => Ok(None),
-        }
+        } */
     }
     fn handle_insert_mode(&mut self, event: Event) -> anyhow::Result<Option<Action>> {
         match event {
@@ -250,6 +286,15 @@ impl Editor {
                     }
                     Action::MoveRight => {
                         self.column += 1;
+                    }
+
+                    Action::MoveToEndOfLine => {
+                        self.column = self.get_line_length();
+                        println!("end of line");
+                    }
+                    Action::MoveToStartOfLine => {
+                        self.column = 0;
+                        println!("start of line");
                     }
                     Action::ModeType(mode_type) => self.mode = mode_type,
                     Action::Quit => break,
