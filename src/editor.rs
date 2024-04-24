@@ -144,7 +144,13 @@ impl Editor {
                 match code {
                     event::KeyCode::Char('j') | event::KeyCode::Down => Some(Action::MoveDown),
                     event::KeyCode::Char('k') | event::KeyCode::Up => Some(Action::MoveUp),
-                    event::KeyCode::Char('h') | event::KeyCode::Left => Some(Action::MoveLeft),
+                    event::KeyCode::Char('h') | event::KeyCode::Left => {
+                        if matches!(modifier, KeyModifiers::CONTROL) {
+                            Some(Action::MoveToStartOfLine)
+                        } else {
+                            Some(Action::MoveLeft)
+                        }
+                    }
                     event::KeyCode::Char('l') | event::KeyCode::Right => {
                         if matches!(modifier, KeyModifiers::CONTROL) {
                             Some(Action::MoveToEndOfLine)
@@ -168,23 +174,6 @@ impl Editor {
         };
 
         Ok(action)
-        /* match event {
-            Event::Key(key) => match key.code {
-                KeyCode::Char('j') | KeyCode::Down => Ok(Some(Action::MoveDown)),
-                KeyCode::Char('k') | KeyCode::Up => Ok(Some(Action::MoveUp)),
-                KeyCode::Char('h') | KeyCode::Left => Ok(Some(Action::MoveLeft)),
-                KeyCode::Char('l') | KeyCode::Right => Ok(Some(Action::MoveRight)),
-                KeyCode::Char('q') => Ok(Some(Action::Quit)),
-                KeyCode::Char('i') => {
-                    self.stdout.queue(cursor::SetCursorStyle::BlinkingBar)?;
-                    Ok(Some(Action::ModeType(Mode::Insert)))
-                }
-                KeyCode::Char('$') => Ok(Some(Action::MoveToEndOfLine)),
-                KeyCode::Char('0') => Ok(Some(Action::MoveToStartOfLine)),
-                _ => Ok(None),
-            },
-            _ => Ok(None),
-        } */
     }
     fn handle_insert_mode(&mut self, event: Event) -> anyhow::Result<Option<Action>> {
         match event {
