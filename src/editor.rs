@@ -26,6 +26,7 @@ enum Action {
     MoveDown,
     MoveLeft,
     MoveRight,
+    AddChar(char),
     ModeType(Mode),
     MoveToEndOfLine,
     MoveToStartOfLine,
@@ -203,10 +204,11 @@ impl Editor {
                     Ok(None)
                 }
                 KeyCode::Char(ch) => {
-                    self.stdout.queue(style::Print(ch))?;
+                    return Ok(Some(Action::AddChar(ch)));
+                    /* self.stdout.queue(style::Print(ch))?;
                     let next = self.column + 1;
                     self.column = next;
-                    Ok(None)
+                    Ok(None) */
                 }
                 KeyCode::Up => Ok(Some(Action::MoveUp)),
                 KeyCode::Right => Ok(Some(Action::MoveRight)),
@@ -235,6 +237,10 @@ impl Editor {
         if total_height >= self.buffer.len() as u16 {
             self.row = self.buffer.len() as u16 - self.terminal_top - 1;
         }
+    }
+
+    fn buffer_line(&mut self) -> u16 {
+        return self.terminal_top + self.row;
     }
 
     pub fn init(&mut self) -> anyhow::Result<()> {
@@ -274,6 +280,14 @@ impl Editor {
                         }
                     }
                     Action::MoveRight => {
+                        self.column += 1;
+                    }
+
+                    Action::AddChar(ch) => {
+                        self.stdout.queue(style::Print(ch))?;
+                        let column = self.column as usize;
+                        let buffer_line = self.buffer_line();
+                        self.buffer.insert_char(column, buffer_line, ch);
                         self.column += 1;
                     }
 

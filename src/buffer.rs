@@ -27,4 +27,11 @@ impl Buffer {
     pub fn len(&mut self) -> usize {
         self.lines.len()
     }
+
+    pub fn insert_char(&mut self, index: usize, buffer_line: u16, value: char) {
+        println!("index: {}, value: {}", index, value);
+        if let Some(lines) = self.lines.get_mut(buffer_line as usize) {
+            (*lines).insert(index, value)
+        }
+    }
 }
