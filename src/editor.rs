@@ -162,6 +162,7 @@ impl Editor {
                     }
                     event::KeyCode::Char('q') => Some(Action::Quit),
                     event::KeyCode::Char('i') => {
+                        self.column += 1;
                         self.stdout.queue(cursor::SetCursorStyle::BlinkingBar)?;
                         Some(Action::ModeType(Mode::Insert))
                     }
@@ -188,13 +189,6 @@ impl Editor {
 
                 KeyCode::Backspace => {
                     return Ok(Some(Action::RemoveChar));
-                    /* if self.column > 0 {
-                        self.column -= 1;
-                        self.stdout
-                            .queue(cursor::MoveLeft(1))?
-                            .queue(style::Print(" "))?;
-                        self.stdout.flush()?;
-                    } */
                 }
                 KeyCode::Delete => {
                     println!("delete");
@@ -207,10 +201,6 @@ impl Editor {
                 }
                 KeyCode::Char(ch) => {
                     return Ok(Some(Action::AddChar(ch)));
-                    /* self.stdout.queue(style::Print(ch))?;
-                    let next = self.column + 1;
-                    self.column = next;
-                    Ok(None) */
                 }
                 KeyCode::Up => Ok(Some(Action::MoveUp)),
                 KeyCode::Right => Ok(Some(Action::MoveRight)),
